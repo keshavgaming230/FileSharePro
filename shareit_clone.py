@@ -46,14 +46,18 @@ pc_name = f"{platform.node()}'s PC"
 
 
 def get_local_ip():
-    """Get local IP address"""
+    """Get the active local IP address"""
     try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(("8.8.8.8", 80))
-        ip = s.getsockname()[0]
-        s.close()
+        # Try hostname resolution first
+        ip = socket.gethostbyname(socket.gethostname())
+        if ip.startswith("127."):
+            # If it resolves to localhost, force external check
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            ip = s.getsockname()[0]
+            s.close()
         return ip
-    except:
+    except Exception:
         return "127.0.0.1"
 
 
@@ -930,21 +934,8 @@ def create_templates():
     (templates_dir / "online.html").write_text(TEMPLATE_ONLINE)
 
 
-def main():
+def main(port):
     """Main entry point"""
-    port = DEFAULT_PORT
-    
-    # Check if port is available
-    for attempt_port in range(DEFAULT_PORT, DEFAULT_PORT + 100):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        result = sock.connect_ex(('127.0.0.1', attempt_port))
-        sock.close()
-        if result != 0:
-            port = attempt_port
-            break
-    
-    create_templates()
-    
     local_ip = get_local_ip()
     print(f"\n{'='*60}")
     print(f"  {APP_NAME} v{VERSION}")
@@ -960,4 +951,6 @@ if __name__ == '__main__':
     create_templates()
     port = int(os.environ.get("PORT", DEFAULT_PORT))
     app.config["PORT"] = port  # store it in config
+    main(port)                 # print info with the same port
     app.run(host='0.0.0.0', port=port)
+
