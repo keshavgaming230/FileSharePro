@@ -921,13 +921,6 @@ def create_templates():
     (templates_dir / "online.html").write_text(TEMPLATE_ONLINE)
 
 
-def open_browser(port):
-    """Open browser after a short delay"""
-    import time
-    time.sleep(1.5)
-    webbrowser.open(f'http://localhost:{port}')
-
-
 def main():
     """Main entry point"""
     port = DEFAULT_PORT
@@ -952,16 +945,8 @@ def main():
     print(f"\n  📁 Uploads:   {UPLOAD_FOLDER}")
     print(f"  📂 Downloads: {DOWNLOAD_FOLDER}")
     print(f"\n{'='*60}\n")
-    
-    # Open browser in background
-    threading.Thread(target=open_browser, args=(port,), daemon=True).start()
-    
-    try:
-        app.run(host='0.0.0.0', port=port, debug=False, threaded=True)
-    except KeyboardInterrupt:
-        print("\n\n👋 Shutting down FileShare Pro...")
-        sys.exit(0)
 
 
 if __name__ == '__main__':
-    main()
+    create_templates()
+    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 5000)))
