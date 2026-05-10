@@ -12,8 +12,8 @@ import threading
 import platform
 import webbrowser
 from pathlib import Path
-from datetime import datetime
-from flask import Flask, render_template, request, jsonify, send_file, send_from_directory
+from datetime import datetime, timedelta
+from flask import Flask, render_template, render_template_string, request, jsonify, send_file, send_from_directory
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
 import qrcode
@@ -24,6 +24,7 @@ import base64
 APP_NAME = "FileShare Pro"
 VERSION = "1.0.0"
 DEFAULT_PORT = 49690
+DEVICE_TIMEOUT = timedelta(minutes=10)
 UPLOAD_FOLDER = Path.home() / "FileSharePro" / "uploads"
 DOWNLOAD_FOLDER = Path.home() / "FileSharePro" / "downloads"
 
@@ -68,6 +69,18 @@ def generate_qr_code(url):
     img_str = base64.b64encode(buffered.getvalue()).decode()
     return f"data:image/png;base64,{img_str}"
 
+
+def cleanup_devices():
+    now = datetime.now()
+    to_remove = []
+
+    for k, v in connected_devices.items():
+        last = datetime.fromisoformat(v['connected_at'])
+        if now - last > DEVICE_TIMEOUT:
+            to_remove.append(k)
+
+    for k in to_remove:
+        del connected_devices[k]
 
 # API Routes
 @app.route('/webuser', methods=['GET', 'POST'])
@@ -205,29 +218,24 @@ def list_received_files():
 # Web Interface Routes
 @app.route('/')
 def index():
-    """Main landing page"""
-    return render_template('index.html')
+    return render_template_string(TEMPLATE_INDEX, app_name=APP_NAME)
 
 
 @app.route('/pc/online.html')
 def online_page():
     """Connection page for mobile devices"""
     local_ip = get_local_ip()
-    port = request.host.split(':')[1] if ':' in request.host else DEFAULT_PORT
+    port = request.environ.get('SERVER_PORT', DEFAULT_PORT)
     connection_url = f"http://{local_ip}:{port}/webuser?cid=&name=&os=&dev=PC"
     qr_code = generate_qr_code(connection_url)
     
-    return render_template('online.html', 
-                         ip=local_ip, 
-                         port=port,
-                         qr_code=qr_code,
-                         connection_url=connection_url)
-
-
-@app.route('/static/<path:filename>')
-def static_files(filename):
-    """Serve static files"""
-    return send_from_directory('static', filename)
+    return render_template_string(
+        TEMPLATE_ONLINE,
+        ip=local_ip,
+        port=port,
+        qr_code=qr_code,
+        connection_url=connection_url
+    )
 
 
 # HTML Templates (embedded for single-file distribution)
