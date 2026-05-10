@@ -225,7 +225,8 @@ def index():
 def online_page():
     """Connection page for mobile devices"""
     local_ip = get_local_ip()
-    port = request.environ.get('SERVER_PORT', DEFAULT_PORT)
+    # Use the same port Flask is running on
+    port = app.config.get("PORT", DEFAULT_PORT)
     connection_url = f"http://{local_ip}:{port}/webuser?cid=&name=&os=&dev=PC"
     qr_code = generate_qr_code(connection_url)
     
@@ -958,4 +959,5 @@ def main():
 if __name__ == '__main__':
     create_templates()
     port = int(os.environ.get("PORT", DEFAULT_PORT))
+    app.config["PORT"] = port  # store it in config
     app.run(host='0.0.0.0', port=port)
